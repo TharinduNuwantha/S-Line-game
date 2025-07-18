@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>S Line Effect Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Facebook Instant Games SDK -->
+  <script src="https://connect.facebook.net/en_US/fbinstant.6.0.js"></script>
+  <!-- Google Fonts for Sinhala -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+    }
+    body {
+      margin: 0;
+      background: #f0f2f5;
+      font-family: 'Noto Sans Sinhala', 'Abhaya Libre', Arial, sans-serif;
+      min-height: 100vh;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden; /* Prevents scrollbars */
+    }
+    .container {
+      background: #fff;
+      border-radius: 22px;
+      box-shadow: 0 6px 32px rgba(24, 25, 26, 0.13), 0 1.5px 4px rgba(24,119,242,0.04);
+      padding: 22px 4vw 18px 4vw;
+      max-width: 420px;
+      width: 100vw;
+      min-height: 100vh;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .profile-img {
+      width: 28vw;
+      max-width: 120px;
+      min-width: 64px;
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      border: 3px solid #1877f2;
+      margin-bottom: 14px;
+      object-fit: cover;
+      background: #fff;
+      box-shadow: 0 2px 12px rgba(24,119,242,0.10);
+      transition: box-shadow 0.2s;
+    }
+    .profile-img:hover {
+      box-shadow: 0 4px 18px rgba(24,119,242,0.18);
+    }
+    .button-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        margin-top: 22px;
+    }
+    .play-btn, .share-btn {
+      background: linear-gradient(90deg, #1877f2 60%, #4267B2 100%);
+      color: #fff;
+      border: none;
+      border-radius: 28px;
+      padding: 16px 0;
+      width: 90%;
+      max-width: 320px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(24,119,242,0.10);
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 0.01em;
+      outline: none;
+      display: block;
+    }
+    .share-btn {
+        background: linear-gradient(90deg, #34A853 60%, #2c8e45 100%);
+        margin-top: 12px;
+    }
+    .play-btn:active, .share-btn:active {
+      transform: scale(0.97);
+    }
+    .result {
+      color: #2c0202;
+      font-size: clamp(1.1rem, 3vw, 1.3rem);
+      font-family: 'Noto Sans Sinhala', 'Abhaya Libre', Arial, sans-serif;
+      margin: 18px 0 0 0;
+      text-align: center;
+      min-height: 32px;
+      font-weight: 700;
+    }
+    .loading-text {
+        color: #050505;
+        font-size: clamp(1rem, 2.8vw, 1.1rem);
+        font-weight: 700;
+        margin-top: 18px;
+        min-height: 32px;
+        display: none; /* Hidden by default */
+    }
+    .canvas-wrap {
+      width: 100%;
+      max-width: 95vw;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      background: #eaf1fb;
+      border-radius: 18px;
+      box-shadow: 0 2px 12px rgba(24,119,242,0.06);
+      padding: 12px 0 12px 0;
+    }
+    canvas {
+      border-radius: 16px;
+      background: #eaf1fb;
+      width: 100%;
+      max-width: 340px;
+      min-width: 180px;
+      height: auto;
+      aspect-ratio: 1 / 1;
+      box-shadow: 0 2px 12px rgba(24,25,26,0.13);
+      display: block;
+    }
+    .question-text {
+      color: #050505;
+      font-size: clamp(1.05rem, 2.8vw, 1.22rem);
+      font-family: 'Noto Sans Sinhala', 'Abhaya Libre', Arial, sans-serif;
+      text-align: center;
+      margin-bottom: 10px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      line-height: 1.3;
+    }
+    .divider {
+      width: 80%;
+      max-width: 320px;
+      height: 1.5px;
+      background: linear-gradient(90deg, #e4e6eb 0%, #cfd8e6 100%);
+      border-radius: 1px;
+      margin: 12px 0 8px 0;
+      opacity: 0.7;
+    }
+    @media (max-width: 500px) {
+      .container {
+        padding: 6px 0 6px 0;
+        min-height: 100vh;
+        border-radius: 0;
+      }
+      .canvas-wrap {
+        padding: 6px 0 6px 0;
+        margin-top: 8px;
+        margin-bottom: 4px;
+      }
+      canvas {
+        width: 95vw;
+        height: 95vw;
+        max-width: 95vw;
+        max-height: 95vw;
+        min-width: 48px;
+        min-height: 48px;
+      }
+      .profile-img {
+        max-width: 80px;
+        min-width: 48px;
+      }
+      .play-btn, .share-btn {
+        font-size: 1rem;
+        padding: 10px 18px;
+      }
+      .question-text {
+        font-size: 1rem;
+        margin-bottom: 6px;
+      }
+      .result {
+        font-size: 1.05rem;
+        margin: 10px 0 0 0;
+      }
+      .divider {
+        margin: 8px 0 4px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img id="profileImg" class="profile-img" src="https://scontent.fcmb11-1.fna.fbcdn.net/v/t39.30808-6/471986263_1280180549799939_6198680520906707614_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeEONWaeiv1EBtaBjz7NqWy8UJig9m9o2jpQmKD2b2jaOj5BHeRX77pcsfk6TVoFxF_3Vu1mrCAJx8m-_6X89Qk7&_nc_ohc=qUQ_84eZK9MQ7kNvwHyXwjC&_nc_oc=Adm7XXJgMsHy-TKk0LmKuSSPQll08-bKbuhdjJb3OiUVc7hFrEQlNN-jVONiLQoNDIc&_nc_zt=23&_nc_ht=scontent.fcmb11-1.fna&_nc_gid=SpffCFvROKBy9Dc7aGkctA&oh=00_AfTguwFA8N1g7bNlC2ZzKYmK_R_gUsyvdo7CsaXoTpbVHA&oe=68801C99" alt="Profile">
+    <div class="question-text" id="questionText"></div>
+    <div class="divider"></div>
+    <div class="result" id="resultText"></div>
+    <div id="loadingText" class="loading-text">Calculating...</div>
+    <div class="canvas-wrap">
+      <canvas id="gameCanvas" width="340" height="340"></canvas>
+    </div>
+    <div class="button-container">
+        <button class="play-btn" id="playBtn">Play</button>
+        <button class="share-btn" id="shareBtn" style="display: none;">Share Result</button>
+    </div>
+  </div>
+
+  <script>
+    // --- DOM Elements ---
+    const profileImgEl = document.getElementById('profileImg');
+    const questionTextEl = document.getElementById('questionText');
+    const resultTextEl = document.getElementById('resultText');
+    const loadingTextEl = document.getElementById('loadingText');
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const playBtn = document.getElementById("playBtn");
+    const shareBtn = document.getElementById("shareBtn");
+
+    // --- Game State & Variables ---
+    let gameState = 'INITIAL'; // INITIAL, LOADING, PLAYING, RESULT
+    let sLines = [];
+    let lineCount = 0;
+    let currentLine = 0;
+    let lastLineTime = 0;
+    const lineDrawInterval = 50; // ms between each line
+    
+    let loadingStartTime = 0;
+    const loadingDuration = 2000; // 2 seconds
+
+    let particles = [];
+    const particleCount = 30;
+
+    const profileImage = new window.Image();
+    profileImage.src = profileImgEl.src;
+    
+    // In a real game, get this from FBInstant.player.getName()
+    const userName = "Tharindu";
+
+    // --- Facebook Instant Games Initialization ---
+    window.onload = () => {
+        // This function is required to start the game on Facebook
+        // It will be skipped when testing locally in a browser
+        if (typeof FBInstant !== 'undefined') {
+            FBInstant.initializeAsync()
+                .then(() => {
+                    // Set loading progress, etc. if needed
+                    FBInstant.setLoadingProgress(100);
+                    return FBInstant.startGameAsync();
+                })
+                .then(() => {
+                    // Game starts here
+                    runGame();
+                });
+        } else {
+            // For local testing
+            runGame();
+        }
+    };
+    
+    function runGame() {
+        // --- Setup ---
+        questionTextEl.textContent = `${userName} ට රතු ඉරී කීයක් තියනවද බලමු ?`;
+        playBtn.onclick = handlePlayClick;
+        shareBtn.onclick = shareResult;
+        window.addEventListener('resize', resizeCanvas);
+        
+        resizeCanvas();
+        initParticles();
+        gameLoop(); // Start the main animation loop
+    }
+
+    // --- Main Game Loop ---
+    function gameLoop(timestamp) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw background animations
+        drawBackground();
+        updateAndDrawParticles();
+
+        // Handle different game states
+        if (gameState === 'LOADING') {
+            drawProfileImage();
+            drawLoadingIndicator(timestamp);
+            if (timestamp - loadingStartTime > loadingDuration) {
+                startGame();
+            }
+        } else if (gameState === 'PLAYING') {
+            drawProfileImage();
+            drawAllSLines(false); // Draw completed lines
+            // Animate the next line
+            if (timestamp - lastLineTime > lineDrawInterval) {
+                if (currentLine < lineCount) {
+                    currentLine++;
+                    lastLineTime = timestamp;
+                } else {
+                    endGame();
+                }
+            }
+        } else { // INITIAL or RESULT state
+            drawProfileImage();
+            if (gameState === 'RESULT') {
+                 drawAllSLines(true); // Draw all lines statically
+            }
+        }
+        
+        requestAnimationFrame(gameLoop);
+    }
+
+    // --- Game Flow Functions ---
+    function handlePlayClick() {
+        // Reset UI
+        playBtn.style.display = 'none';
+        shareBtn.style.display = 'none';
+        resultTextEl.textContent = '';
+        questionTextEl.style.display = 'none';
+        loadingTextEl.style.display = 'block';
+
+        // Start Loading
+        gameState = 'LOADING';
+        loadingStartTime = performance.now();
+    }
+    
+    function startGame() {
+        gameState = 'PLAYING';
+        loadingTextEl.style.display = 'none';
+        
+        // Reset game variables
+        sLines = [];
+        currentLine = 0;
+        lastLineTime = performance.now();
+        lineCount = Math.floor(Math.random() * 100) + 1;
+
+        // Pre-calculate all S-Line positions
+        const { centerX, centerY, picSize } = getProfilePosition();
+        const originX = centerX;
+        const originY = centerY - (picSize / 2) + 20;
+
+        for (let i = 0; i < lineCount; i++) {
+            sLines.push({
+                startX: originX + (Math.random() - 0.5) * (canvas.width * 0.18),
+                startY: originY,
+                ctrlX: originX + (Math.random() - 0.5) * (canvas.width * 0.28),
+                ctrlY: originY - Math.random() * (canvas.height * 0.35) - 30,
+                endX: originX + (Math.random() - 0.5) * (canvas.width * 0.32),
+                endY: originY - Math.random() * (canvas.height * 0.45) - 60,
+            });
+        }
+    }
+
+    function endGame() {
+        gameState = 'RESULT';
+        resultTextEl.textContent = `${userName} ට රතු ඉරී ${lineCount} යි!`;
+        playBtn.textContent = 'Play Again';
+        playBtn.style.display = 'block';
+        shareBtn.style.display = 'block';
+    }
+
+    // --- Drawing Functions ---
+
+    function drawProfileImage() {
+        if (!profileImage.complete) return;
+        const { centerX, centerY, picSize } = getProfilePosition();
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, picSize / 2, 0, 2 * Math.PI);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(profileImage, centerX - picSize / 2, centerY - picSize / 2, picSize, picSize);
+        ctx.restore();
+    }
+
+    function drawSLine(line) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(line.startX, line.startY);
+        ctx.quadraticCurveTo(line.ctrlX, line.ctrlY, line.endX, line.endY);
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.85)';
+        ctx.lineWidth = 1.7;
+        ctx.shadowColor = 'rgba(255, 51, 51, 0.7)';
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawAllSLines(isStatic) {
+        const limit = isStatic ? lineCount : currentLine;
+        for (let i = 0; i < limit; i++) {
+            drawSLine(sLines[i]);
+        }
+    }
+
+    function drawBackground() {
+        ctx.fillStyle = '#eaf1fb';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    
+    function drawLoadingIndicator(timestamp) {
+        const { centerX, centerY, picSize } = getProfilePosition();
+        const radius = picSize / 2 + 15;
+        const angle = (timestamp / 1000) * Math.PI; // Rotate 180 degrees per second
+        
+        ctx.save();
+        ctx.beginPath();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(24, 119, 242, 0.6)';
+        ctx.arc(centerX, centerY, radius, angle, angle + Math.PI * 1.5);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // --- Background Particle Animation ---
+    function initParticles() {
+        particles = [];
+        for (let i = 0; i < particleCount; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 2 + 1,
+                vx: (Math.random() - 0.5) * 0.5,
+                vy: (Math.random() - 0.5) * 0.5 - 0.5, // Tend to float up
+                alpha: Math.random() * 0.3 + 0.1
+            });
+        }
+    }
+
+    function updateAndDrawParticles() {
+        for (let p of particles) {
+            p.x += p.vx;
+            p.y += p.vy;
+
+            // Reset particle if it goes off screen
+            if (p.x < -p.radius || p.x > canvas.width + p.radius || p.y < -p.radius) {
+                p.x = Math.random() * canvas.width;
+                p.y = canvas.height + p.radius;
+            }
+
+            // Draw particle
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(24, 119, 242, ${p.alpha})`;
+            ctx.fill();
+        }
+    }
+
+    // --- Utility Functions ---
+    function resizeCanvas() {
+        let size;
+        if (window.innerWidth <= 500) {
+            size = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.7);
+        } else {
+            size = Math.min(window.innerWidth * 0.95, 340);
+        }
+        canvas.width = size;
+        canvas.height = size;
+        // Re-initialize particles for the new size
+        if (particles.length > 0) initParticles(); 
+    }
+
+    function getProfilePosition() {
+        const centerX = canvas.width / 2;
+        const marginBottom = canvas.height * 0.08;
+        const picSize = canvas.height * 0.55;
+        const centerY = canvas.height - marginBottom - picSize / 2;
+        return { centerX, centerY, picSize };
+    }
+
+    // --- Social Sharing ---
+    function shareResult() {
+        // This function will only work when run on the Facebook platform
+        if (typeof FBInstant !== 'undefined') {
+            // Convert the canvas to a base64 image
+            const resultImage = canvas.toDataURL('image/png');
+            
+            FBInstant.shareAsync({
+                intent: 'SHARE',
+                image: resultImage,
+                text: `${userName} got ${lineCount} red lines! Can you beat it?`,
+                data: { myReplayData: '...' },
+            }).then(() => {
+                // This is called after the player shared or closed the dialog
+                console.log('Share dialog was closed.');
+            });
+        } else {
+            // Fallback for local testing
+            console.log('Share button clicked. In a real environment, this would open the Facebook Share dialog.');
+            alert('This would open the Facebook Share dialog!');
+        }
+    }
+
+  </script>
+</body>
+</html>
