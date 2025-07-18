@@ -8,6 +8,7 @@
   <!-- Google Fonts for Sinhala -->
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;700&display=swap" rel="stylesheet">
   <style>
+    /* CSS is unchanged, so it's omitted for brevity but should be included here from your original code */
     html, body {
       height: 100%;
     }
@@ -45,7 +46,7 @@
       border: 3px solid #1877f2;
       margin-bottom: 14px;
       object-fit: cover;
-      background: #fff;
+      background: #eaf1fb; /* BG color for while image loads */
       box-shadow: 0 2px 12px rgba(24,119,242,0.10);
       transition: box-shadow 0.2s;
     }
@@ -145,38 +146,25 @@
     }
     @media (max-width: 500px) {
       .container {
-        padding: 6px 0 6px 0;
-        min-height: 100vh;
-        border-radius: 0;
+        padding: 6px 0 6px 0; min-height: 100vh; border-radius: 0;
       }
       .canvas-wrap {
-        padding: 6px 0 6px 0;
-        margin-top: 8px;
-        margin-bottom: 4px;
+        padding: 6px 0 6px 0; margin-top: 8px; margin-bottom: 4px;
       }
       canvas {
-        width: 95vw;
-        height: 95vw;
-        max-width: 95vw;
-        max-height: 95vw;
-        min-width: 48px;
-        min-height: 48px;
+        width: 95vw; height: auto; max-width: 95vw;
       }
       .profile-img {
-        max-width: 80px;
-        min-width: 48px;
+        max-width: 80px; min-width: 48px;
       }
       .play-btn, .share-btn {
-        font-size: 1rem;
-        padding: 10px 18px;
+        font-size: 1rem; padding: 10px 18px;
       }
       .question-text {
-        font-size: 1rem;
-        margin-bottom: 6px;
+        font-size: 1rem; margin-bottom: 6px;
       }
       .result {
-        font-size: 1.05rem;
-        margin: 10px 0 0 0;
+        font-size: 1.05rem; margin: 10px 0 0 0;
       }
       .divider {
         margin: 8px 0 4px 0;
@@ -186,7 +174,7 @@
 </head>
 <body>
   <div class="container">
-    <img id="profileImg" class="profile-img" src="https://scontent.fcmb11-1.fna.fbcdn.net/v/t39.30808-6/471986263_1280180549799939_6198680520906707614_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeEONWaeiv1EBtaBjz7NqWy8UJig9m9o2jpQmKD2b2jaOj5BHeRX77pcsfk6TVoFxF_3Vu1mrCAJx8m-_6X89Qk7&_nc_ohc=qUQ_84eZK9MQ7kNvwHyXwjC&_nc_oc=Adm7XXJgMsHy-TKk0LmKuSSPQll08-bKbuhdjJb3OiUVc7hFrEQlNN-jVONiLQoNDIc&_nc_zt=23&_nc_ht=scontent.fcmb11-1.fna&_nc_gid=SpffCFvROKBy9Dc7aGkctA&oh=00_AfTguwFA8N1g7bNlC2ZzKYmK_R_gUsyvdo7CsaXoTpbVHA&oe=68801C99" alt="Profile">
+    <img id="profileImg" class="profile-img" src="" alt="Profile"> <!-- Src is now empty, will be filled by FB -->
     <div class="question-text" id="questionText"></div>
     <div class="divider"></div>
     <div class="result" id="resultText"></div>
@@ -211,91 +199,137 @@
     const playBtn = document.getElementById("playBtn");
     const shareBtn = document.getElementById("shareBtn");
 
-    // --- Game State & Variables ---
-    let gameState = 'INITIAL'; // INITIAL, LOADING, PLAYING, RESULT
-    let sLines = [];
+    // --- Game & FB Variables ---
+    let gameState = 'INITIAL'; // INITIAL, LOADING, PLAYING, RESULT, VIEWING_FRIEND
+    let userName = "Player"; // Default name
+    let userPhoto = "";
     let lineCount = 0;
+    
+    // --> MONETIZATION: Ad variables
+    let interstitialAd = null;
+    const interstitialAdPlacementId = 'YOUR_PLACEMENT_ID_HERE'; // <-- IMPORTANT: REPLACE THIS
+
+    // --> CONTEXTUAL SHARE: Variable to hold friend's data
+    let friendResultData = null;
+
+    // --- Image & Animation Variables ---
+    let sLines = [];
     let currentLine = 0;
     let lastLineTime = 0;
-    const lineDrawInterval = 50; // ms between each line
-    
+    const lineDrawInterval = 50;
     let loadingStartTime = 0;
-    const loadingDuration = 2000; // 2 seconds
-
+    const loadingDuration = 2000;
     let particles = [];
     const particleCount = 30;
-
     const profileImage = new window.Image();
-    profileImage.src = profileImgEl.src;
-    
-    // In a real game, get this from FBInstant.player.getName()
-    const userName = "Tharindu";
+    const friendProfileImage = new window.Image();
+    profileImage.crossOrigin = "anonymous"; // <-- IMPORTANT for drawing FB photo on canvas
+    friendProfileImage.crossOrigin = "anonymous";
+    let playCount = 0;
 
     // --- Facebook Instant Games Initialization ---
     window.onload = () => {
-        // This function is required to start the game on Facebook
-        // It will be skipped when testing locally in a browser
         if (typeof FBInstant !== 'undefined') {
             FBInstant.initializeAsync()
-                .then(() => {
-                    // Set loading progress, etc. if needed
-                    FBInstant.setLoadingProgress(100);
-                    return FBInstant.startGameAsync();
-                })
-                .then(() => {
-                    // Game starts here
-                    runGame();
-                });
+                .then(() => FBInstant.setLoadingProgress(100))
+                .then(() => FBInstant.startGameAsync())
+                .then(setupGame)
+                .catch(error => console.error("FB Init Error:", error));
         } else {
             // For local testing
-            runGame();
+            setupGame();
         }
     };
     
-    function runGame() {
-        // --- Setup ---
-        questionTextEl.textContent = `${userName} ට රතු ඉරී කීයක් තියනවද බලමු ?`;
+    function setupGame() {
+        // --- Setup Listeners ---
         playBtn.onclick = handlePlayClick;
         shareBtn.onclick = shareResult;
         window.addEventListener('resize', resizeCanvas);
-        
         resizeCanvas();
         initParticles();
+
+        if (typeof FBInstant !== 'undefined') {
+            // --> GET PLAYER INFO
+            userName = FBInstant.player.getName();
+            userPhoto = FBInstant.player.getPhoto();
+            profileImgEl.src = userPhoto;
+            profileImage.src = userPhoto;
+
+            // --> MONETIZATION: Pre-load the ad for later use
+            loadInterstitialAd();
+
+            // --> CONTEXTUAL SHARE: Check if the game was opened from a share
+            const entryPointData = FBInstant.getEntryPointData();
+            if (entryPointData && entryPointData.score) {
+                friendResultData = entryPointData;
+                gameState = 'VIEWING_FRIEND';
+                friendProfileImage.src = friendResultData.photo;
+                profileImgEl.src = friendResultData.photo; // Show friend's pic initially
+                questionTextEl.innerHTML = `${friendResultData.name} ට රතු ඉරී ${friendResultData.score} ක් ලැබුණා!<br>ඔබට එය පරාජය කළ හැකිද?`;
+                playBtn.textContent = "Play Now";
+                resultTextEl.textContent = "";
+            } else {
+                showInitialScreen();
+            }
+        } else {
+            // Local testing setup
+            userName = "Test Player";
+            profileImage.src = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23ddd'/></svg>";
+            profileImgEl.src = profileImage.src;
+            showInitialScreen();
+        }
+
         gameLoop(); // Start the main animation loop
+    }
+    
+    function showInitialScreen() {
+        gameState = 'INITIAL';
+        profileImgEl.src = userPhoto || profileImage.src; // Revert to player's own photo
+        questionTextEl.textContent = `${userName} ට රතු ඉරී කීයක් තියනවද බලමු?`;
+        resultTextEl.textContent = "";
+        playBtn.textContent = "Play";
+        playBtn.style.display = 'block';
+        shareBtn.style.display = 'none';
     }
 
     // --- Main Game Loop ---
     function gameLoop(timestamp) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw background animations
         drawBackground();
         updateAndDrawParticles();
 
-        // Handle different game states
-        if (gameState === 'LOADING') {
-            drawProfileImage();
-            drawLoadingIndicator(timestamp);
-            if (timestamp - loadingStartTime > loadingDuration) {
-                startGame();
-            }
-        } else if (gameState === 'PLAYING') {
-            drawProfileImage();
-            drawAllSLines(false); // Draw completed lines
-            // Animate the next line
-            if (timestamp - lastLineTime > lineDrawInterval) {
-                if (currentLine < lineCount) {
-                    currentLine++;
-                    lastLineTime = timestamp;
-                } else {
-                    endGame();
+        switch (gameState) {
+            case 'VIEWING_FRIEND':
+                drawProfileImage(friendProfileImage);
+                // Draw friend's lines statically
+                if (sLines.length > 0) drawAllSLines(true);
+                break;
+            case 'LOADING':
+                drawProfileImage(profileImage);
+                drawLoadingIndicator(timestamp);
+                if (timestamp - loadingStartTime > loadingDuration) startGame();
+                break;
+            case 'PLAYING':
+                drawProfileImage(profileImage);
+                drawAllSLines(false);
+                if (timestamp - lastLineTime > lineDrawInterval) {
+                    if (currentLine < lineCount) {
+                        currentLine++;
+                        lastLineTime = timestamp;
+                    } else {
+                        endGame();
+                    }
                 }
-            }
-        } else { // INITIAL or RESULT state
-            drawProfileImage();
-            if (gameState === 'RESULT') {
-                 drawAllSLines(true); // Draw all lines statically
-            }
+                break;
+            case 'RESULT':
+                drawProfileImage(profileImage);
+                drawAllSLines(true);
+                break;
+            case 'INITIAL':
+            default:
+                drawProfileImage(profileImage);
+                break;
         }
         
         requestAnimationFrame(gameLoop);
@@ -303,184 +337,162 @@
 
     // --- Game Flow Functions ---
     function handlePlayClick() {
-        // Reset UI
+        if (friendResultData) {
+            // If we were viewing a friend's result, reset to play our own game
+            friendResultData = null;
+            sLines = []; // Clear friend's lines
+            profileImage.src = userPhoto;
+            profileImgEl.src = userPhoto;
+        }
+
         playBtn.style.display = 'none';
         shareBtn.style.display = 'none';
         resultTextEl.textContent = '';
         questionTextEl.style.display = 'none';
         loadingTextEl.style.display = 'block';
 
-        // Start Loading
         gameState = 'LOADING';
         loadingStartTime = performance.now();
+        playCount++;
     }
     
     function startGame() {
         gameState = 'PLAYING';
         loadingTextEl.style.display = 'none';
         
-        // Reset game variables
         sLines = [];
         currentLine = 0;
         lastLineTime = performance.now();
-        lineCount = Math.floor(Math.random() * 100) + 1;
-
-        // Pre-calculate all S-Line positions
-        const { centerX, centerY, picSize } = getProfilePosition();
-        const originX = centerX;
-        const originY = centerY - (picSize / 2) + 20;
-
-        for (let i = 0; i < lineCount; i++) {
-            sLines.push({
-                startX: originX + (Math.random() - 0.5) * (canvas.width * 0.18),
-                startY: originY,
-                ctrlX: originX + (Math.random() - 0.5) * (canvas.width * 0.28),
-                ctrlY: originY - Math.random() * (canvas.height * 0.35) - 30,
-                endX: originX + (Math.random() - 0.5) * (canvas.width * 0.32),
-                endY: originY - Math.random() * (canvas.height * 0.45) - 60,
-            });
+        // Set lineCount based on playCount
+        if (playCount === 7) {
+            lineCount = 1;
+        } else {
+            lineCount = Math.floor(Math.random() * 100) + 1;
         }
+        
+        // --> CONTEXTUAL SHARE: If we are viewing a friend's result, we need to generate lines for them to display
+        if (friendResultData && friendResultData.score) {
+            lineCount = friendResultData.score;
+        }
+
+        precalculateSLines(lineCount);
     }
 
     function endGame() {
         gameState = 'RESULT';
         resultTextEl.textContent = `${userName} ට රතු ඉරී ${lineCount} යි!`;
+        
+        // --> MONETIZATION: Show the ad BEFORE showing the final buttons
+        showInterstitialAd();
+    }
+    
+    function showEndGameButtons() {
         playBtn.textContent = 'Play Again';
         playBtn.style.display = 'block';
         shareBtn.style.display = 'block';
     }
 
-    // --- Drawing Functions ---
+    // --- Drawing & Calculation Functions ---
+    function precalculateSLines(count) {
+        sLines = [];
+        const { centerX, centerY, picSize } = getProfilePosition();
+        const originX = centerX;
+        const originY = centerY - (picSize / 2) + 20;
 
-    function drawProfileImage() {
-        if (!profileImage.complete) return;
+        for (let i = 0; i < count; i++) {
+            sLines.push({
+                startX: originX + (Math.random() - 0.5) * (canvas.width * 0.18), startY: originY,
+                ctrlX: originX + (Math.random() - 0.5) * (canvas.width * 0.28), ctrlY: originY - Math.random() * (canvas.height * 0.35) - 30,
+                endX: originX + (Math.random() - 0.5) * (canvas.width * 0.32), endY: originY - Math.random() * (canvas.height * 0.45) - 60,
+            });
+        }
+    }
+
+    function drawProfileImage(img) {
+        if (!img || !img.complete || img.naturalHeight === 0) return;
         const { centerX, centerY, picSize } = getProfilePosition();
         ctx.save();
         ctx.beginPath();
         ctx.arc(centerX, centerY, picSize / 2, 0, 2 * Math.PI);
         ctx.closePath();
         ctx.clip();
-        ctx.drawImage(profileImage, centerX - picSize / 2, centerY - picSize / 2, picSize, picSize);
+        ctx.drawImage(img, centerX - picSize / 2, centerY - picSize / 2, picSize, picSize);
         ctx.restore();
     }
-
-    function drawSLine(line) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(line.startX, line.startY);
-        ctx.quadraticCurveTo(line.ctrlX, line.ctrlY, line.endX, line.endY);
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.85)';
-        ctx.lineWidth = 1.7;
-        ctx.shadowColor = 'rgba(255, 51, 51, 0.7)';
-        ctx.shadowBlur = 8;
-        ctx.stroke();
-        ctx.restore();
-    }
-
+    
     function drawAllSLines(isStatic) {
-        const limit = isStatic ? lineCount : currentLine;
+        const limit = isStatic ? sLines.length : currentLine;
         for (let i = 0; i < limit; i++) {
             drawSLine(sLines[i]);
         }
     }
-
-    function drawBackground() {
-        ctx.fillStyle = '#eaf1fb';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
     
-    function drawLoadingIndicator(timestamp) {
-        const { centerX, centerY, picSize } = getProfilePosition();
-        const radius = picSize / 2 + 15;
-        const angle = (timestamp / 1000) * Math.PI; // Rotate 180 degrees per second
-        
-        ctx.save();
-        ctx.beginPath();
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = 'rgba(24, 119, 242, 0.6)';
-        ctx.arc(centerX, centerY, radius, angle, angle + Math.PI * 1.5);
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    // --- Background Particle Animation ---
-    function initParticles() {
-        particles = [];
-        for (let i = 0; i < particleCount; i++) {
-            particles.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                radius: Math.random() * 2 + 1,
-                vx: (Math.random() - 0.5) * 0.5,
-                vy: (Math.random() - 0.5) * 0.5 - 0.5, // Tend to float up
-                alpha: Math.random() * 0.3 + 0.1
+    // --> MONETIZATION: Ad Functions
+    function loadInterstitialAd() {
+        if (typeof FBInstant === 'undefined') return;
+        FBInstant.getInterstitialAdAsync(interstitialAdPlacementId)
+            .then(ad => {
+                console.log('Ad pre-loaded successfully.');
+                interstitialAd = ad;
+                return interstitialAd.loadAsync();
+            })
+            .catch(err => {
+                console.error('Interstitial ad failed to load: ', err.message);
             });
-        }
     }
 
-    function updateAndDrawParticles() {
-        for (let p of particles) {
-            p.x += p.vx;
-            p.y += p.vy;
-
-            // Reset particle if it goes off screen
-            if (p.x < -p.radius || p.x > canvas.width + p.radius || p.y < -p.radius) {
-                p.x = Math.random() * canvas.width;
-                p.y = canvas.height + p.radius;
-            }
-
-            // Draw particle
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(24, 119, 242, ${p.alpha})`;
-            ctx.fill();
-        }
-    }
-
-    // --- Utility Functions ---
-    function resizeCanvas() {
-        let size;
-        if (window.innerWidth <= 500) {
-            size = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.7);
+    function showInterstitialAd() {
+        if (interstitialAd) {
+            interstitialAd.showAsync()
+                .then(() => {
+                    console.log('Interstitial ad shown.');
+                    // Ad was shown, now show the game buttons and pre-load the next ad
+                    showEndGameButtons();
+                    loadInterstitialAd();
+                })
+                .catch(err => {
+                    console.error('Interstitial ad failed to show: ', err.message);
+                    // Ad failed to show, but we must still let the player continue.
+                    showEndGameButtons();
+                });
         } else {
-            size = Math.min(window.innerWidth * 0.95, 340);
+            // No ad was available, just show the buttons.
+            console.log('No ad available to show.');
+            showEndGameButtons();
         }
-        canvas.width = size;
-        canvas.height = size;
-        // Re-initialize particles for the new size
-        if (particles.length > 0) initParticles(); 
     }
 
-    function getProfilePosition() {
-        const centerX = canvas.width / 2;
-        const marginBottom = canvas.height * 0.08;
-        const picSize = canvas.height * 0.55;
-        const centerY = canvas.height - marginBottom - picSize / 2;
-        return { centerX, centerY, picSize };
-    }
-
-    // --- Social Sharing ---
+    // --> CONTEXTUAL SHARE: Social Sharing Function
     function shareResult() {
-        // This function will only work when run on the Facebook platform
         if (typeof FBInstant !== 'undefined') {
-            // Convert the canvas to a base64 image
-            const resultImage = canvas.toDataURL('image/png');
+            const resultImage = canvas.toDataURL('image/png'); // Get image of result
             
             FBInstant.shareAsync({
                 intent: 'SHARE',
                 image: resultImage,
-                text: `${userName} got ${lineCount} red lines! Can you beat it?`,
-                data: { myReplayData: '...' },
+                text: `${userName} ට රතු ඉරී ${lineCount} ක් ලැබුණා!`,
+                // --> Embed the result data for friends to see!
+                data: { 
+                    score: lineCount,
+                    name: userName,
+                    photo: userPhoto
+                },
             }).then(() => {
-                // This is called after the player shared or closed the dialog
                 console.log('Share dialog was closed.');
             });
         } else {
-            // Fallback for local testing
-            console.log('Share button clicked. In a real environment, this would open the Facebook Share dialog.');
             alert('This would open the Facebook Share dialog!');
         }
     }
+
+    // --- Utility, Animation, and other Drawing functions (mostly unchanged) ---
+    function drawSLine(line) { ctx.save(); ctx.beginPath(); ctx.moveTo(line.startX, line.startY); ctx.quadraticCurveTo(line.ctrlX, line.ctrlY, line.endX, line.endY); ctx.strokeStyle = 'rgba(255, 0, 0, 0.85)'; ctx.lineWidth = 1.7; ctx.shadowColor = 'rgba(255, 51, 51, 0.7)'; ctx.shadowBlur = 8; ctx.stroke(); ctx.restore(); }
+    function drawBackground() { ctx.fillStyle = '#eaf1fb'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    function drawLoadingIndicator(timestamp) { const { centerX, centerY, picSize } = getProfilePosition(); const radius = picSize / 2 + 15; const angle = (timestamp / 1000) * Math.PI; ctx.save(); ctx.beginPath(); ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(24, 119, 242, 0.6)'; ctx.arc(centerX, centerY, radius, angle, angle + Math.PI * 1.5); ctx.stroke(); ctx.restore(); }
+    function initParticles() { particles = []; for (let i = 0; i < particleCount; i++) { particles.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, radius: Math.random() * 2 + 1, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5 - 0.5, alpha: Math.random() * 0.3 + 0.1 }); } }
+    function updateAndDrawParticles() { for (let p of particles) { p.x += p.vx; p.y += p.vy; if (p.x < -p.radius || p.x > canvas.width + p.radius || p.y < -p.radius) { p.x = Math.random() * canvas.width; p.y = canvas.height + p.radius; } ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = `rgba(24, 119, 242, ${p.alpha})`; ctx.fill(); } }
+    function resizeCanvas() { let size = (window.innerWidth <= 500) ? Math.min(window.innerWidth * 0.95, 400) : Math.min(window.innerWidth * 0.95, 340); canvas.width = size; canvas.height = size; if (particles.length > 0) initParticles(); if(gameState === 'VIEWING_FRIEND' && friendResultData) { precalculateSLines(friendResultData.score); } else if (gameState === 'RESULT') { precalculateSLines(lineCount); } }
+    function getProfilePosition() { const centerX = canvas.width / 2; const marginBottom = canvas.height * 0.08; const picSize = canvas.height * 0.55; const centerY = canvas.height - marginBottom - picSize / 2; return { centerX, centerY, picSize }; }
 
   </script>
 </body>
